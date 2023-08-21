@@ -25,6 +25,10 @@ class Pipeline:
         self.file_format=file_format
 
     def extract(self, default_schema=StructType([]),save=False):
+        '''
+        This function take data from sources and load data in a raw zone. In the challenge ask me to read data in spark and pandas dataframe format. This explanation
+        is confused but I try to read data in both forms.
+        '''
         if self.type_load == 'spark':
             if default_schema != StructType([]): 
                 df = spark.read.format(self.file_format).option("header", "true").schema(default_schema).load(self.root_data_path+self.file_name+'.'+self.file_format)
@@ -42,6 +46,9 @@ class Pipeline:
             return spark_df
     
     def transform(self, file_name,schema=StructType([]), save=False):
+        '''
+        This function take data from raw zone and apply schema and save the result in silver zone if the save parameter is set True
+        '''
         df=spark.read.parquet(self.RAW_DATA_PATH_SPARK+file_name,schema=schema)
         if schema != StructType([]) and save:
             df.write.parquet(self.SILVER_ZONE+file_name,mode='overwrite')
@@ -133,7 +140,23 @@ usa_country_wise_schema = StructType([
                                 StructField("Deaths",IntegerType(), nullable=False)
 ])
 
-#worldometer_data_schema = 
+worldometer_data_schema = StructType([StructField("Country/Region",StringType(), nullable=False),
+                                      StructField("Continent",StringType(), nullable=False),
+                                      StructField("Population",IntegerType(), nullable=False),
+                                      StructField("Total_Case",IntegerType(), nullable=False),
+                                      StructField("New_Cases",IntegerType(), nullable=False),
+                                      StructField("Total_Deaths",IntegerType(), nullable=False),
+                                      StructField("New_Deaths",IntegerType(), nullable=False),
+                                      StructField("Total_Recovered",IntegerType(), nullable=False),
+                                      StructField("New_Recovered",IntegerType(), nullable=False),
+                                      StructField("ActiveCases",IntegerType(), nullable=False),
+                                      StructField("Serious/Critical",IntegerType(), nullable=False),
+                                      StructField("Tot_Cases/1M",FloatType(), nullable=False),
+                                      StructField("Deaths_Cases/1M",FloatType(), nullable=False),
+                                      StructField("Total_Test",IntegerType(), nullable=False),
+                                      StructField("Test/1M",FloatType(), nullable=False),
+                                      StructField("WHO Region",StringType(), nullable=False)
+                                      ])
 
 
 ################# Load source data and put it in raw zone using spark ################
@@ -163,9 +186,16 @@ df_worldometer_data = worldometer_data.extract()
 
 day_wise = day_wise.transform(file_name='day_wise', schema = day_wise_schema, save =True)
 
-covid_19_clean.transform(file_name = 'covid_19_clean_complete', schema = covid_19_clean_schema, save=True)
+covid_19_clean=covid_19_clean.transform(file_name = 'covid_19_clean_complete', schema = covid_19_clean_schema, save=True)
 
+country_wise_latest=country_wise_latest.transform(file_name = 'country_wise_latest', schema = country_wise_latest_schema, save=True)
 
+full_grouped=full_grouped.transform(file_name = 'full_grouped', schema = full_grouped_schema, save=True)
+
+usa_country_wise=usa_country_wise.transform(file_name = 'usa_county_wise', schema = usa_country_wise_schema, save=True)
+
+worldometer_data=worldometer_data.transform(file_name = 'worldometer_data', schema = worldometer_data_schema, save=True)
+#worldometer_data.show()
 
 ############## Show Load Data (In this part Spark working in parallel) ####################
 
